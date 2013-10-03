@@ -146,7 +146,7 @@ class StringEditor(EditorWidget):
         self._paramval_lineedit.editingFinished.connect(self.edit_finished)
         # Add textChanged to capture the change while cursor is still in
         # the text field.
-        self._paramval_lineedit.textChanged.connect(self.edit_finished)
+        self._paramval_lineedit.editingFinished.connect(self.edit_finished)
 
     def update_value(self, value):
         rospy.logdebug('StringEditor update_value={}'.format(value))
@@ -177,7 +177,7 @@ class IntegerEditor(EditorWidget):
                                                            self._max, self))
 
         # Connect slots
-        self._paramval_lineEdit.textChanged.connect(self._text_edited)
+        self._paramval_lineEdit.editingFinished.connect(self._text_edited)
         self._slider_horizontal.sliderReleased.connect(self._slider_released)
         #self._slider_horizontal.sliderMoved.connect(self._update_text_gui)
         # valueChanged gets called when groove is clicked on.
@@ -256,7 +256,7 @@ class DoubleEditor(EditorWidget):
                                      self._get_value_slider(config['default']))
 
         # Connect slots
-        self._paramval_lineEdit.textChanged.connect(self._text_edited)
+        self._paramval_lineEdit.editingFinished.connect(self._text_edited)
         self._slider_horizontal.sliderReleased.connect(self._slider_released)
 
     def _text_edited(self):
