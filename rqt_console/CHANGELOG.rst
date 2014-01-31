@@ -2,6 +2,21 @@
 Changelog for package rqt_console
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.3.4 (2014-01-28)
+------------------
+
+0.3.3 (2014-01-08)
+------------------
+* add groups for rqt plugins, renamed some plugins (`#167 <https://github.com/ros-visualization/rqt_common_plugins/issues/167>`_)
+* use icons instead of text when available, refactor pause/resume button
+
+0.3.2 (2013-10-14)
+------------------
+
+0.3.1 (2013-10-09)
+------------------
+* rewrite of rqt_console to drastically improve performance (`#186 <https://github.com/ros-visualization/rqt_common_plugins/pull/186>`_)
+
 0.3.0 (2013-08-28)
 ------------------
 * pause button no more saves state (`#125 <https://github.com/ros-visualization/rqt_common_plugins/issues/125>`_)

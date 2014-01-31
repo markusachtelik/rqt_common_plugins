@@ -31,7 +31,6 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 import os
-import rospkg
 
 from python_qt_binding import loadUi
 from python_qt_binding.QtGui import QApplication, QCursor, QFileDialog, QHeaderView,QIcon, QMenu, QMessageBox, QTableView, QWidget
@@ -66,7 +65,7 @@ class ConsoleWidget(QWidget):
     """
     Primary widget for the rqt_console plugin.
     """
-    def __init__(self, proxy_model, minimal=False):
+    def __init__(self, proxy_model, rospack, minimal=False):
         """
         :param proxymodel: the proxy model to display in the widget,''QSortFilterProxyModel''
         :param minimal: if true the load, save and column buttons will be hidden as well as the filter splitter, ''bool''
@@ -75,13 +74,13 @@ class ConsoleWidget(QWidget):
         self._proxy_model = proxy_model
         self._model = self._proxy_model.sourceModel()
         self._paused = False
+        self._rospack = rospack
 
         # These are lists of Tuples = (,)
         self._exclude_filters = []
         self._highlight_filters = []
 
-        rp = rospkg.RosPack()
-        ui_file = os.path.join(rp.get_path('rqt_console'), 'resource', 'console_widget.ui')
+        ui_file = os.path.join(self._rospack.get_path('rqt_console'), 'resource', 'console_widget.ui')
         loadUi(ui_file, self)
 
         if minimal:
@@ -103,14 +102,25 @@ class ConsoleWidget(QWidget):
 
         self.add_exclude_button.setIcon(QIcon.fromTheme('list-add'))
         self.add_highlight_button.setIcon(QIcon.fromTheme('list-add'))
-        self._pauseicon = QIcon.fromTheme('media-playback-pause')
-        self._recordicon = QIcon.fromTheme('media-record')
-        self.pause_button.setIcon(self._pauseicon)
+        self.pause_button.setIcon(QIcon.fromTheme('media-playback-pause'))
+        if not self.pause_button.icon().isNull():
+            self.pause_button.setText('')
+        self.record_button.setIcon(QIcon.fromTheme('media-record'))
+        if not self.record_button.icon().isNull():
+            self.record_button.setText('')
         self.load_button.setIcon(QIcon.fromTheme('document-open'))
+        if not self.load_button.icon().isNull():
+            self.load_button.setText('')
         self.save_button.setIcon(QIcon.fromTheme('document-save'))
+        if not self.save_button.icon().isNull():
+            self.save_button.setText('')
+        self.clear_button.setIcon(QIcon.fromTheme('edit-clear'))
+        if not self.clear_button.icon().isNull():
+            self.clear_button.setText('')
         self.highlight_exclude_button.setIcon(QIcon.fromTheme('format-text-strikethrough'))
 
         self.pause_button.clicked[bool].connect(self._handle_pause_clicked)
+        self.record_button.clicked[bool].connect(self._handle_record_clicked)
         self.load_button.clicked[bool].connect(self._handle_load_clicked)
         self.save_button.clicked[bool].connect(self._handle_save_clicked)
         self.column_resize_button.clicked[bool].connect(self._handle_column_resize_clicked)
@@ -265,9 +275,9 @@ class ConsoleWidget(QWidget):
         index = len(self._highlight_filters)
         newfilter = self.filter_factory[filter_index][1]()
         if len(self.filter_factory[filter_index]) >= 4:
-            newwidget = self.filter_factory[filter_index][2](newfilter, self.filter_factory[filter_index][3])
+            newwidget = self.filter_factory[filter_index][2](newfilter, self._rospack, self.filter_factory[filter_index][3])
         else:
-            newwidget = self.filter_factory[filter_index][2](newfilter)
+            newwidget = self.filter_factory[filter_index][2](newfilter, self._rospack)
 
         # pack the new filter tuple onto the filter list
         self._highlight_filters.append((newfilter, FilterWrapperWidget(newwidget, self.filter_factory[filter_index][0]), filter_index))
@@ -312,9 +322,9 @@ class ConsoleWidget(QWidget):
         index = len(self._exclude_filters)
         newfilter = self.filter_factory[filter_index][1]()
         if len(self.filter_factory[filter_index]) >= 4:
-            newwidget = self.filter_factory[filter_index][2](newfilter, self.filter_factory[filter_index][3])
+            newwidget = self.filter_factory[filter_index][2](newfilter, self._rospack, self.filter_factory[filter_index][3])
         else:
-            newwidget = self.filter_factory[filter_index][2](newfilter)
+            newwidget = self.filter_factory[filter_index][2](newfilter, self._rospack)
 
         # pack the new filter tuple onto the filter list
         self._exclude_filters.append((newfilter, FilterWrapperWidget(newwidget, self.filter_factory[filter_index][0]), filter_index))
@@ -486,7 +496,7 @@ class ConsoleWidget(QWidget):
             rowlist.append(self._proxy_model.mapToSource(current).row())
         browsetext = self._model.get_selected_text(rowlist)
         if browsetext is not None:
-            self._browsers.append(TextBrowseDialog(browsetext))
+            self._browsers.append(TextBrowseDialog(browsetext, self._rospack))
             self._browsers[-1].show()
 
     def _handle_clear_button_clicked(self, checked):
@@ -586,7 +596,6 @@ class ConsoleWidget(QWidget):
             if messages:
                 self._model.insert_rows(messages)
 
-                self.pause_button.setChecked(True)
                 self._handle_pause_clicked(True)
 
             return True
@@ -629,14 +638,15 @@ class ConsoleWidget(QWidget):
                 handle.close()
             return True
 
-    def _handle_pause_clicked(self, checked):
-        self._paused = checked
-        if self._paused:
-            self.pause_button.setIcon(self._recordicon)
-            self.pause_button.setText(self.tr('Resume'))
-        else:
-            self.pause_button.setIcon(self._pauseicon)
-            self.pause_button.setText(self.tr('Pause'))
+    def _handle_pause_clicked(self):
+        self._paused = True
+        self.pause_button.setVisible(False)
+        self.record_button.setVisible(True)
+
+    def _handle_record_clicked(self):
+        self._paused = False
+        self.pause_button.setVisible(True)
+        self.record_button.setVisible(False)
 
     def _handle_column_resize_clicked(self):
         self.table_view.resizeColumnsToContents()
@@ -680,7 +690,7 @@ class ConsoleWidget(QWidget):
         instance_settings.set_value('table_splitter', self.table_splitter.saveState())
         instance_settings.set_value('filter_splitter', self.filter_splitter.saveState())
 
-        instance_settings.set_value('paused', self.pause_button.isChecked())
+        instance_settings.set_value('paused', self._paused)
         instance_settings.set_value('show_highlighted_only', self.highlight_exclude_button.isChecked())
 
         exclude_filters = []
@@ -706,8 +716,11 @@ class ConsoleWidget(QWidget):
         else:
             self.filter_splitter.setSizes([1, 1])
 
-        self.pause_button.setChecked(instance_settings.value('paused') in [True, 'true'])
-        self._handle_pause_clicked(self.pause_button.isChecked())
+        paused = instance_settings.value('paused') in [True, 'true']
+        if paused:
+            self._handle_pause_clicked()
+        else:
+            self._handle_record_clicked()
         self.highlight_exclude_button.setChecked(instance_settings.value('show_highlighted_only') in [True, 'true'])
         self._proxy_model.set_show_highlighted_only(self.highlight_exclude_button.isChecked())
 
